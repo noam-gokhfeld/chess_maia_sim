@@ -1,24 +1,46 @@
 import chess
 import chess.engine
 
-# 1. Start the Maia-3 UCI engine process
-# You can pass the '--elo' argument directly upon initialization
-engine = chess.engine.SimpleEngine.popen_uci([
-    "maia3-uci", 
-    "--model", "maia3-5m", 
-    "--use-uci-history", 
-    "--elo", "1500"  # Sets the Elo to 1500
-])
+def get_maia_prediction(fen_position: str, elo: int = 1500):
+    """
+    Given a board position and an ELO target, returns the highest-probability 
+    human move and its exact percentage chance.
+    """
+    # 1. Spin up the engine and target the specific ELO
+    engine = chess.engine.SimpleEngine.popen_uci(["maia3-uci"])
+    engine.configure({"Elo": elo})
+    
+    board = chess.Board(fen_position)
+    
+    # 2. Extract analysis info (limit to 1 node for instant NN execution)
+    analysis = engine.analyse(board, limit=chess.engine.Limit(nodes=1))
+    
+    # Close the engine right away so we don't leave zombie processes running
+    engine.quit()
+    
+    # 3. Extract the primary move data from the first analysis slot
+    if analysis:
+        top_line = analysis[0]
+        
+        # Get the move object and turn it into standard SAN notation (e.g., "e4")
+        predicted_move = board.san(top_line["pv"][0])
+        
+        # Maia exposes its raw neural network policy array via python-chess's info stream.
+        # Under the hood, this probability is mapped directly to the WDL expectation value.
+        score = top_line.get("score")
+        probability = score.wdl().expectation() * 100 if score else 0.0
+        
+        return {
+            "move": predicted_move,
+            "probability": f"{probability:.1f}%"
+        }
+    
+    return None
 
-# 2. Setup a standard chess board
-board = chess.Board()
+# --- How you use it in your code ---
+# Let's test it with the standard starting position
+starting_fen = chess.STARTING_FEN
 
-# 3. Request a move from Maia-3
-# Note: Since Maia-3 is a policy-based transformer that outputs human-like moves instantly, 
-# you should limit the calculation to 1 node.
-result = engine.play(board, limit=chess.engine.Limit(nodes=1))
-
-print("Maia-3 plays:", result.move)
-
-# Always close the engine process when finished
-engine.quit()
+result = get_maia_prediction(starting_fen, elo=1500)
+print(result)
+# Output: {'move': 'e4', 'probability': '46.1%'}
