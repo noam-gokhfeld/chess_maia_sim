@@ -29,26 +29,38 @@ async def setup_maia_engine(engine_model: MaiaEngineModel):
         transport, engine = await chess.engine.popen_uci(
             [sys.executable, "-m", "maia3.uci", "--model", engine_model.value]
         )
-        return engine
+        return transport, engine
     except Exception as e:
         print(f"WAAAAAAAHHH THERE IS AN ERROR IN THE CODE: {e}")
         traceback.print_exc()
-        return None
+        return None, None
 
 async def setup_engines():
-    print("setting white Maia engine...")
-    global maia_engine_white, maia_engine_black
-    maia_engine_white = await setup_maia_engine(MaiaEngineModel.MAIA3_5M)
-    if maia_engine_white is None:
-        raise RuntimeError("Failed to start the white Maia engine.")
+    print("setting up Maia engine...")
+    global maia_engine, maia_engine_transport
+    maia_engine_transport, maia_engine = await setup_maia_engine(MaiaEngineModel.MAIA3_5M)
+    if maia_engine is None or maia_engine_transport is None:
+        raise RuntimeError("Failed to start the Maia engine.")
 
-    print("setting black Maia engine...")
-    maia_engine_black = await setup_maia_engine(MaiaEngineModel.MAIA3_5M)
-    if maia_engine_black is None:
-        raise RuntimeError("Failed to start the black Maia engine.")
+    print("Maia engine set up successfully.")
+    return maia_engine
 
-    print("Maia engines set up successfully.")
-    return maia_engine_white, maia_engine_black
+async def configure_engine_for_turn(engine, board, white_elo, black_elo, playing_style_white, playing_style_black):
+    if board.turn == chess.WHITE:
+        self_elo = white_elo
+        oppo_elo = black_elo
+        temperature, topp = configure_playing_style(playing_style_white)
+    else:
+        self_elo = black_elo
+        oppo_elo = white_elo
+        temperature, topp = configure_playing_style(playing_style_black)
+
+    await engine.configure({
+        "SelfElo": self_elo,
+        "OppoElo": oppo_elo,
+        "Temperature": temperature,
+        "TopP": topp,
+    })
 
 def setup_game(event, white, black):
     global game
@@ -88,35 +100,23 @@ async def simulate_game(white_elo,
     try:
         global board
         global game
-        global maia_engine_white
-        global maia_engine_black
+        global maia_engine
+        global maia_engine_transport
         global node
 
-        if maia_engine_white is None or maia_engine_black is None:
-            raise RuntimeError("Maia engines were not initialized successfully.")
-
-        white_temperature, white_topp = configure_playing_style(playing_style_white)
-        black_temperature, black_topp = configure_playing_style(playing_style_black)
-
-        await maia_engine_white.configure({
-                "SelfElo": white_elo,
-                "OppoElo": black_elo,
-                "Temperature": white_temperature,
-                "TopP": white_topp,
-        })
-
-        await maia_engine_black.configure({
-                "SelfElo": black_elo,
-                "OppoElo": white_elo,
-                "Temperature": black_temperature,
-                "TopP": black_topp,
-        })
+        if maia_engine is None or maia_engine_transport is None:
+            raise RuntimeError("Maia engine was not initialized successfully.")
 
         while not board.is_game_over():
-            if board.turn == chess.WHITE:
-                result = await maia_engine_white.play(board, chess.engine.Limit(nodes=1))
-            else:
-                result = await maia_engine_black.play(board, chess.engine.Limit(nodes=1))
+            await configure_engine_for_turn(
+                maia_engine,
+                board,
+                white_elo,
+                black_elo,
+                playing_style_white,
+                playing_style_black,
+            )
+            result = await maia_engine.play(board, chess.engine.Limit(nodes=1))
 
             board.push(result.move)
             node = node.add_main_variation(result.move)
@@ -125,8 +125,7 @@ async def simulate_game(white_elo,
         final_result = board.result()
         game.headers["Result"] = final_result
 
-        await maia_engine_white.quit()
-        await maia_engine_black.quit()
+        await maia_engine.quit()
 
         print(game)
 
