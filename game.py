@@ -13,10 +13,10 @@ class MaiaEngineModel(Enum):
     MAIA3_79M = "maia3-79m"
 
 class PlayingStyles(Enum):
-    DISCIPLINED_GM = "disciplined_gm" # rigorous consistency and zero risk, temp=0.3, topp=0.9
-    MECHANICAL = "mechanical" # maximum determinism, minimal randomness, temp=0.3, topp=0.4
-    CREATIVE = "creative" # exploratory play with higher randomness, temp=0.8, topp=0.9
-    STRATEGIC = "strategic" # balanced approach with moderate randomness, temp=0.8, topp=0.5
+    DISCIPLINED_GM = "disciplined_gm" # rigorous consistency and zero risk, temp=0.3, topp=1.0
+    MECHANICAL = "mechanical" # maximum determinism, minimal randomness, temp=0.3, topp=0.6
+    CREATIVE = "creative" # exploratory play with higher randomness, temp=0.8, topp=1.0
+    STRATEGIC = "strategic" # balanced approach with moderate randomness, temp=0.8, topp=0.75
 
 
 print("creating game, board, and node objects...")
@@ -75,16 +75,16 @@ def setup_game(event, white, black):
 def configure_playing_style(playing_style: PlayingStyles):
     if playing_style == PlayingStyles.DISCIPLINED_GM:
         temperature = 0.3
-        topp = 0.9
+        topp = 1.0
     elif playing_style == PlayingStyles.MECHANICAL:
         temperature = 0.3
-        topp = 0.4
+        topp = 0.6
     elif playing_style == PlayingStyles.CREATIVE:
         temperature = 0.8
-        topp = 0.9
+        topp = 1.0
     elif playing_style == PlayingStyles.STRATEGIC:
         temperature = 0.8
-        topp = 0.5
+        topp = 0.75
     else:
         raise ValueError("Invalid playing style selected.")
     
