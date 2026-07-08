@@ -5,11 +5,13 @@ import traceback
 import game
 import asyncio
 
+async def setup_maia_engine():
+    print("setting up Maia engine...")
+    await game.setup_engine()
+    print("Maia engine set up successfully.")
+
 async def create_game(white_elo : int, black_elo : int, playing_style_white : game.PlayingStyles, playing_style_black : game.PlayingStyles):
     try:
-        print("setting up Maia engines...")
-        await game.setup_engines()
-        print("Maia engines set up successfully.")
         print("setting up game headers...")
         game.setup_game("Test Game", f"Maia {white_elo}", f"Maia {black_elo}")
         print("game headers set up successfully.")
@@ -23,6 +25,8 @@ async def create_game(white_elo : int, black_elo : int, playing_style_white : ga
 async def main():
     try:
         print("welcome to the program!")
+        print("setting up Maia engine...")
+        await game.setup_engine()
         while True:
             white_elo = int(input("Enter the ELO rating for the white player: "))
             black_elo = int(input("Enter the ELO rating for the black player: "))

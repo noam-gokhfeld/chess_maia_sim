@@ -35,7 +35,7 @@ async def setup_maia_engine(engine_model: MaiaEngineModel):
         traceback.print_exc()
         return None, None
 
-async def setup_engines():
+async def setup_engine():
     print("setting up Maia engine...")
     global maia_engine, maia_engine_transport
     maia_engine_transport, maia_engine = await setup_maia_engine(MaiaEngineModel.MAIA3_5M)
@@ -124,8 +124,6 @@ async def simulate_game(white_elo,
 
         final_result = board.result()
         game.headers["Result"] = final_result
-
-        await maia_engine.quit()
 
         print(game)
 
