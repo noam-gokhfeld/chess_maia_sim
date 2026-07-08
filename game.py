@@ -13,10 +13,10 @@ class MaiaEngineModel(Enum):
     MAIA3_79M = "maia3-79m"
 
 class PlayingStyles(Enum):
-    DISCIPLINED_GM = 1 # rigorous consistency and zero risk, temp=0.3, topp=0.9
-    MECHANICAL = 2 # maximum determinism, minimal randomness, temp=0.3, topp=0.4
-    CREATIVE = 3 # exploratory play with higher randomness, temp=0.8, topp=0.9
-    STRATEGIC = 4 # balanced approach with moderate randomness, temp=0.8, topp=0.5
+    DISCIPLINED_GM = "disciplined_gm" # rigorous consistency and zero risk, temp=0.3, topp=0.9
+    MECHANICAL = "mechanical" # maximum determinism, minimal randomness, temp=0.3, topp=0.4
+    CREATIVE = "creative" # exploratory play with higher randomness, temp=0.8, topp=0.9
+    STRATEGIC = "strategic" # balanced approach with moderate randomness, temp=0.8, topp=0.5
 
 
 print("creating game, board, and node objects...")
