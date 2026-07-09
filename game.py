@@ -54,21 +54,25 @@ def setup_game(event, white, black, fen=chess.STARTING_FEN):
     game.headers["Site"] = "Simulation Program"
     return game, board
 
-def configure_playing_style(playing_style: PlayingStyles):
-    if playing_style == PlayingStyles.DISCIPLINED_GM:
-        temperature = random.randint(25, 35) / 100.0 
-        topp = 1.0
-    elif playing_style == PlayingStyles.MECHANICAL:
-        temperature = random.randint(25, 35) / 100.0
-        topp = 0.6
-    elif playing_style == PlayingStyles.CREATIVE:
-        temperature = random.randint(75, 85) / 100.0
-        topp = 1.0
-    elif playing_style == PlayingStyles.STRATEGIC:
-        temperature = random.randint(75, 85) / 100.0
-        topp = 0.75
+def configure_playing_style(playing_style: PlayingStyles, customconfig=False):
+    if customconfig:
+        temperature = float(input("Enter the temperature value (0.0 to 1.0): "))
+        topp = float(input("Enter the top-p value (0.0 to 1.0): "))
     else:
-        raise ValueError("Invalid playing style selected.")
+        if playing_style == PlayingStyles.DISCIPLINED_GM:
+            temperature = 0.3
+            topp = 1.0
+        elif playing_style == PlayingStyles.MECHANICAL:
+            temperature = 0.3
+            topp = 0.6
+        elif playing_style == PlayingStyles.CREATIVE:
+            temperature = 0.8
+            topp = 1.0
+        elif playing_style == PlayingStyles.STRATEGIC:
+            temperature = 0.8
+            topp = 0.75
+        else:
+            raise ValueError("Invalid playing style selected.")
     
     return temperature, topp
 
@@ -77,15 +81,17 @@ def configure_playing_style(playing_style: PlayingStyles):
 async def simulate_game(white_elo, 
                   black_elo, 
                   playing_style_white : PlayingStyles=PlayingStyles.STRATEGIC,
-                  playing_style_black : PlayingStyles=PlayingStyles.STRATEGIC):
+                  playing_style_black : PlayingStyles=PlayingStyles.STRATEGIC,
+                  engine_model: MaiaEngineModel=MaiaEngineModel.MAIA3_5M,
+                  fen=chess.STARTING_FEN):
     
     try:
         game, board = setup_game("Simulated Game", f"Maia {white_elo}", f"Maia {black_elo}")
         node = game
         temperature_white, topp_white = configure_playing_style(playing_style_white)
         temperature_black, topp_black = configure_playing_style(playing_style_black)
-        white_maia_engine_transport, white_maia_engine = await setup_maia_engine(MaiaEngineModel.MAIA3_5M, white_elo, temperature_white, topp_white)
-        black_maia_engine_transport, black_maia_engine = await setup_maia_engine(MaiaEngineModel.MAIA3_5M, black_elo, temperature_black, topp_black)
+        white_maia_engine_transport, white_maia_engine = await setup_maia_engine(engine_model, white_elo, temperature_white, topp_white)
+        black_maia_engine_transport, black_maia_engine = await setup_maia_engine(engine_model, black_elo, temperature_black, topp_black)
 
         if white_maia_engine is None or white_maia_engine_transport is None:
             raise RuntimeError("Maia white engine was not initialized successfully.")
