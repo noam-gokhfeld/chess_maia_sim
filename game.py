@@ -21,15 +21,19 @@ class PlayingStyles(Enum):
     STRATEGIC = "strategic" # balanced approach with moderate randomness, temp=0.8, topp=0.75
 
 
-print("creating game, board, and node objects...")
-game = chess.pgn.Game()
-board = chess.Board()
-node = game
 
-async def setup_maia_engine(engine_model: MaiaEngineModel):
+
+
+async def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature: float = 0.0, topp: float = 1.0):
     try:
+        seed = str(random.randint(1, 999999))
         transport, engine = await chess.engine.popen_uci(
-            [sys.executable, "-m", "maia3.uci", "--model", engine_model.value]
+            [sys.executable, "-m", "maia3.uci",
+             "--model", engine_model.value,
+             "--elo", str(elo),
+             "--temperature", str(temperature),
+             "--top-p", str(topp),
+             "--seed", seed]
         )
         return transport, engine
     except Exception as e:
@@ -37,34 +41,10 @@ async def setup_maia_engine(engine_model: MaiaEngineModel):
         traceback.print_exc()
         return None, None
 
-async def setup_engine():
-    print("setting up Maia engine...")
-    global maia_engine, maia_engine_transport
-    maia_engine_transport, maia_engine = await setup_maia_engine(MaiaEngineModel.MAIA3_5M)
-    if maia_engine is None or maia_engine_transport is None:
-        raise RuntimeError("Failed to start the Maia engine.")
 
-    print("Maia engine set up successfully.")
-    return maia_engine
-
-async def configure_engine_for_turn(engine, board, white_elo, black_elo, playing_style_white, playing_style_black):
-    if board.turn == chess.WHITE:
-        self_elo = white_elo
-        oppo_elo = black_elo
-        temperature, topp = configure_playing_style(playing_style_white)
-    else:
-        self_elo = black_elo
-        oppo_elo = white_elo
-        temperature, topp = configure_playing_style(playing_style_black)
-
-    await engine.configure({
-        "SelfElo": self_elo,
-        "OppoElo": oppo_elo,
-        "Temperature": temperature,
-        "TopP": topp})
-
-def setup_game(event, white, black):
-    global game
+def setup_game(event, white, black, fen=chess.STARTING_FEN):
+    game = chess.pgn.Game()
+    board = chess.Board(fen)
     game.headers["Event"] = event
     game.headers["White"] = white
     game.headers["Black"] = black
@@ -72,6 +52,7 @@ def setup_game(event, white, black):
     game.headers["Round"] = "?"
     game.headers["Result"] = "*"
     game.headers["Site"] = "Simulation Program"
+    return game, board
 
 def configure_playing_style(playing_style: PlayingStyles):
     if playing_style == PlayingStyles.DISCIPLINED_GM:
@@ -99,29 +80,25 @@ async def simulate_game(white_elo,
                   playing_style_black : PlayingStyles=PlayingStyles.STRATEGIC):
     
     try:
-        global board
-        global game
-        global maia_engine
-        global maia_engine_transport
-        global node
+        game, board = setup_game("Simulated Game", f"Maia {white_elo}", f"Maia {black_elo}")
+        node = game
+        temperature_white, topp_white = configure_playing_style(playing_style_white)
+        temperature_black, topp_black = configure_playing_style(playing_style_black)
+        white_maia_engine_transport, white_maia_engine = await setup_maia_engine(MaiaEngineModel.MAIA3_5M, white_elo, temperature_white, topp_white)
+        black_maia_engine_transport, black_maia_engine = await setup_maia_engine(MaiaEngineModel.MAIA3_5M, black_elo, temperature_black, topp_black)
 
-        if maia_engine is None or maia_engine_transport is None:
-            raise RuntimeError("Maia engine was not initialized successfully.")
-        
-        changed_white_elo = white_elo + random.randint(-20, 20)
-        changed_black_elo = black_elo + random.randint(-20, 20)
+        if white_maia_engine is None or white_maia_engine_transport is None:
+            raise RuntimeError("Maia white engine was not initialized successfully.")
+        if black_maia_engine is None or black_maia_engine_transport is None:
+            raise RuntimeError("Maia black engine was not initialized successfully.")
+
         
 
         while not board.is_game_over():
-            await configure_engine_for_turn(
-                maia_engine,
-                board,
-                changed_white_elo,
-                changed_black_elo,
-                playing_style_white,
-                playing_style_black)
-            
-            result = await maia_engine.play(board, chess.engine.Limit(nodes=1))
+            if board.turn == chess.WHITE:
+                result = await white_maia_engine.play(board, chess.engine.Limit(nodes=1))
+            else:
+                result = await black_maia_engine.play(board, chess.engine.Limit(nodes=1))
 
             board.push(result.move)
             node = node.add_main_variation(result.move)
@@ -132,8 +109,8 @@ async def simulate_game(white_elo,
 
         print(game)
 
-        print(f"changed elo white: {changed_white_elo}, changed elo black: {changed_black_elo}")
-
+        await white_maia_engine.quit()
+        await black_maia_engine.quit()
         return game
 
     except Exception as e:
