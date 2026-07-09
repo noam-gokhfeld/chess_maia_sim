@@ -1,10 +1,12 @@
 import asyncio
+import random
 import traceback
 import chess
 import chess.engine
 import chess.pgn
 from enum import Enum
 from datetime import date
+import time
 import sys
 
 class MaiaEngineModel(Enum):
@@ -59,8 +61,7 @@ async def configure_engine_for_turn(engine, board, white_elo, black_elo, playing
         "SelfElo": self_elo,
         "OppoElo": oppo_elo,
         "Temperature": temperature,
-        "TopP": topp,
-    })
+        "TopP": topp})
 
 def setup_game(event, white, black):
     global game
@@ -74,16 +75,16 @@ def setup_game(event, white, black):
 
 def configure_playing_style(playing_style: PlayingStyles):
     if playing_style == PlayingStyles.DISCIPLINED_GM:
-        temperature = 0.3
+        temperature = random.randint(25, 35) / 100.0 
         topp = 1.0
     elif playing_style == PlayingStyles.MECHANICAL:
-        temperature = 0.3
+        temperature = random.randint(25, 35) / 100.0
         topp = 0.6
     elif playing_style == PlayingStyles.CREATIVE:
-        temperature = 0.8
+        temperature = random.randint(75, 85) / 100.0
         topp = 1.0
     elif playing_style == PlayingStyles.STRATEGIC:
-        temperature = 0.8
+        temperature = random.randint(75, 85) / 100.0
         topp = 0.75
     else:
         raise ValueError("Invalid playing style selected.")
@@ -106,16 +107,20 @@ async def simulate_game(white_elo,
 
         if maia_engine is None or maia_engine_transport is None:
             raise RuntimeError("Maia engine was not initialized successfully.")
+        
+        changed_white_elo = white_elo + random.randint(-20, 20)
+        changed_black_elo = black_elo + random.randint(-20, 20)
+        
 
         while not board.is_game_over():
             await configure_engine_for_turn(
                 maia_engine,
                 board,
-                white_elo,
-                black_elo,
+                changed_white_elo,
+                changed_black_elo,
                 playing_style_white,
-                playing_style_black,
-            )
+                playing_style_black)
+            
             result = await maia_engine.play(board, chess.engine.Limit(nodes=1))
 
             board.push(result.move)
@@ -126,6 +131,8 @@ async def simulate_game(white_elo,
         game.headers["Result"] = final_result
 
         print(game)
+
+        print(f"changed elo white: {changed_white_elo}, changed elo black: {changed_black_elo}")
 
         return game
 
