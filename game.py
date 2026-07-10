@@ -15,13 +15,17 @@ class MaiaEngineModel(Enum):
     MAIA3_79M = "maia3-79m"
 
 class PlayingStyles(Enum):
-    CUSTOM = "custom" # user-defined parameters
-    SOLID = "solid" # rigorous consistency and zero risk, temp=0.3, topp=0.80
-    NATURALL = "natural" # natural play, temp=0.75, topp=0.95
-    AGRESSIVE = "aggressive" #creative and chaos friendly, temp=1.10, topp=0.98
-    BLUNDERING = "blundering" # embraces mistakes for learning, temp=0.60, topp=1.00
-    BULLET = "bullet" # fast-paced, temp=0.90, topp=0.90
-    ARGMAX = "argmax" # deterministic play, always choosing the best move, temp=0.0, topp=1.0
+    CUSTOM = (float(input("Enter the temperature for the custom playing style (0.0 to 1.0): ")), float(input("Enter the top-p for the custom playing style (0.0 to 1.0): ")))
+    SOLID = (0.3, 0.80) # rigorous consistency and zero risk, temp=0.3, topp=0.80
+    NATURALL = (0.75, 0.95) # natural play, temp=0.75, topp=0.95
+    AGRESSIVE = (1.10, 0.98) #creative and chaos friendly, temp=1.10, topp=0.98
+    BLUNDERING = (0.60, 1.00) # embraces mistakes for learning, temp=0.60, topp=1.00
+    BULLET = (0.90, 0.90) # fast-paced, temp=0.90, topp=0.90
+    ARGMAX = (0.0, 1.0) # deterministic play, always choosing the best move, temp=0.0, topp=1.0
+
+    def __init__(self, temperature : float, topp: float):
+        self.temperature = temperature
+        self.topp = topp
 
 
 
@@ -57,33 +61,7 @@ def setup_game(event, white, black, fen=chess.STARTING_FEN):
     game.headers["Result"] = "*"
     game.headers["Site"] = "Simulation Program"
     return game, board
-
-def configure_playing_style(playing_style: PlayingStyles):
-    if playing_style == PlayingStyles.SOLID:
-        temperature = 0.3
-        topp = 0.80
-    elif playing_style == PlayingStyles.NATURAL:
-        temperature = 0.75
-        topp = 0.95
-    elif playing_style == PlayingStyles.AGRESSIVE:
-        temperature = 1.10
-        topp = 0.98
-    elif playing_style == PlayingStyles.BLUNDERING:
-        temperature = 0.60
-        topp = 1.00
-    elif playing_style == PlayingStyles.BULLET:
-        temperature = 0.90
-        topp = 0.90
-    elif playing_style == PlayingStyles.ARGMAX:
-        temperature = 0.0
-        topp = 1.0
-    elif playing_style == PlayingStyles.CUSTOM:
-        temperature = float(input("Enter the temperature for the custom playing style (0.0 to 1.0): "))
-        topp = float(input("Enter the top-p for the custom playing style (0.0 to 1.0): "))
-    else:
-        raise ValueError("Invalid playing style selected.")
     
-    return temperature, topp
 
 
 
@@ -97,8 +75,8 @@ async def simulate_game(white_elo,
     try:
         game, board = setup_game("Simulated Game", f"Maia {white_elo}", f"Maia {black_elo}", fen)
         node = game
-        temperature_white, topp_white = configure_playing_style(playing_style_white)
-        temperature_black, topp_black = configure_playing_style(playing_style_black)
+        temperature_white, topp_white = playing_style_white.value
+        temperature_black, topp_black = playing_style_black.value
         white_maia_engine_transport, white_maia_engine = await setup_maia_engine(engine_model, white_elo, temperature_white, topp_white)
         black_maia_engine_transport, black_maia_engine = await setup_maia_engine(engine_model, black_elo, temperature_black, topp_black)
 
