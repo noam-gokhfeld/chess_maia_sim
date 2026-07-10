@@ -19,6 +19,7 @@ class PlayingStyles(Enum):
     MECHANICAL = "mechanical" # maximum determinism, minimal randomness, temp=0.3, topp=0.6
     CREATIVE = "creative" # exploratory play with higher randomness, temp=0.8, topp=1.0
     STRATEGIC = "strategic" # balanced approach with moderate randomness, temp=0.8, topp=0.75
+    ARGMAX = "argmax" # deterministic play, always choosing the best move, temp=0.0, topp=1.0
 
 
 
@@ -45,6 +46,7 @@ async def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature
 def setup_game(event, white, black, fen=chess.STARTING_FEN):
     game = chess.pgn.Game()
     board = chess.Board(fen)
+    game.setup(board)
     game.headers["Event"] = event
     game.headers["White"] = white
     game.headers["Black"] = black
@@ -71,6 +73,9 @@ def configure_playing_style(playing_style: PlayingStyles, customconfig=False):
         elif playing_style == PlayingStyles.STRATEGIC:
             temperature = 0.8
             topp = 0.75
+        elif playing_style == PlayingStyles.ARGMAX:
+            temperature = 0.0
+            topp = 1.0
         else:
             raise ValueError("Invalid playing style selected.")
     
@@ -86,7 +91,7 @@ async def simulate_game(white_elo,
                   fen=chess.STARTING_FEN):
     
     try:
-        game, board = setup_game("Simulated Game", f"Maia {white_elo}", f"Maia {black_elo}")
+        game, board = setup_game("Simulated Game", f"Maia {white_elo}", f"Maia {black_elo}", fen)
         node = game
         temperature_white, topp_white = configure_playing_style(playing_style_white)
         temperature_black, topp_black = configure_playing_style(playing_style_black)
