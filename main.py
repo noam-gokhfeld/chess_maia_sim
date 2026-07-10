@@ -16,6 +16,9 @@ async def main():
             playing_style_black = game.PlayingStyles(input("Enter the playing style for the black player: "))
             print("crafting game...")
             game_product = await game.simulate_game(white_elo, black_elo, playing_style_white, playing_style_black, fen=chess.STARTING_FEN)
+            print("Game simulation complete!")
+            print("Game PGN:")
+            print(game_product)
 
     except Exception as e:
         print("WAAAAAAAHHH THERE IS AN ERROR IN THE CODE: ")

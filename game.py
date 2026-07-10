@@ -100,8 +100,6 @@ async def simulate_game(white_elo,
         final_result = board.result()
         game.headers["Result"] = final_result
 
-        print(game)
-
         await white_maia_engine.quit()
         await black_maia_engine.quit()
         return game
