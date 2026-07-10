@@ -15,6 +15,7 @@ class MaiaEngineModel(Enum):
     MAIA3_79M = "maia3-79m"
 
 class PlayingStyles(Enum):
+    CUSTOM = "custom" # user-defined parameters
     DISCIPLINED_GM = "disciplined_gm" # rigorous consistency and zero risk, temp=0.3, topp=1.0
     MECHANICAL = "mechanical" # maximum determinism, minimal randomness, temp=0.3, topp=0.6
     CREATIVE = "creative" # exploratory play with higher randomness, temp=0.8, topp=1.0
@@ -56,28 +57,27 @@ def setup_game(event, white, black, fen=chess.STARTING_FEN):
     game.headers["Site"] = "Simulation Program"
     return game, board
 
-def configure_playing_style(playing_style: PlayingStyles, customconfig=False):
-    if customconfig:
-        temperature = float(input("Enter the temperature value (0.0 to 1.0): "))
-        topp = float(input("Enter the top-p value (0.0 to 1.0): "))
+def configure_playing_style(playing_style: PlayingStyles):
+    if playing_style == PlayingStyles.DISCIPLINED_GM:
+        temperature = 0.3
+        topp = 1.0
+    elif playing_style == PlayingStyles.MECHANICAL:
+        temperature = 0.3
+        topp = 0.6
+    elif playing_style == PlayingStyles.CREATIVE:
+        temperature = 0.8
+        topp = 1.0
+    elif playing_style == PlayingStyles.STRATEGIC:
+        temperature = 0.8
+        topp = 0.75
+    elif playing_style == PlayingStyles.ARGMAX:
+        temperature = 0.0
+        topp = 1.0
+    elif playing_style == PlayingStyles.CUSTOM:
+        temperature = float(input("Enter the temperature for the custom playing style (0.0 to 1.0): "))
+        topp = float(input("Enter the top-p for the custom playing style (0.0 to 1.0): "))
     else:
-        if playing_style == PlayingStyles.DISCIPLINED_GM:
-            temperature = 0.3
-            topp = 1.0
-        elif playing_style == PlayingStyles.MECHANICAL:
-            temperature = 0.3
-            topp = 0.6
-        elif playing_style == PlayingStyles.CREATIVE:
-            temperature = 0.8
-            topp = 1.0
-        elif playing_style == PlayingStyles.STRATEGIC:
-            temperature = 0.8
-            topp = 0.75
-        elif playing_style == PlayingStyles.ARGMAX:
-            temperature = 0.0
-            topp = 1.0
-        else:
-            raise ValueError("Invalid playing style selected.")
+        raise ValueError("Invalid playing style selected.")
     
     return temperature, topp
 
