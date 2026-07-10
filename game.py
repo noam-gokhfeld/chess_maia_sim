@@ -108,7 +108,7 @@ async def simulate_game(white_elo,
 
             board.push(result.move)
             node = node.add_main_variation(result.move)
-            await asyncio.sleep(0.1)  # Small delay to allow for async processing
+            await asyncio.sleep(0)  # Small delay to allow for async processing
 
         final_result = board.result()
         game.headers["Result"] = final_result
