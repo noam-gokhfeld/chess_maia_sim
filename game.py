@@ -30,17 +30,27 @@ class PlayingStyles(Enum):
 
 
 
-async def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature: float = 0.0, topp: float = 1.0):
+async def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature: float = 0.0, topp: float = 1.0, path_to_engine: str = None):
     try:
         seed = str(random.randint(1, 999999))
-        transport, engine = await chess.engine.popen_uci(
-            [sys.executable, "-m", "maia3.uci",
-             "--model", engine_model.value,
-             "--elo", str(elo),
-             "--temperature", str(temperature),
-             "--top-p", str(topp),
-             "--seed", seed]
-        )
+        if path_to_engine is None:
+            transport, engine = await chess.engine.popen_uci(
+                [sys.executable, "-m", "maia3.uci",
+                "--model", engine_model.value,
+                "--elo", str(elo),
+                "--temperature", str(temperature),
+                "--top-p", str(topp),
+                "--seed", seed]
+            )
+        else:
+            transport, engine = await chess.engine.popen_uci(
+                [path_to_engine,
+                "--model", engine_model.value,
+                "--elo", str(elo),
+                "--temperature", str(temperature),
+                "--top-p", str(topp),
+                "--seed", seed]
+            )
         return transport, engine
     except Exception as e:
         print(f"WAAAAAAAHHH THERE IS AN ERROR IN THE CODE: {e}")
@@ -73,7 +83,8 @@ async def simulate_game(white_elo,
                   custom_temperature_black: float = None,
                   custom_topp_black: float = None,
                   engine_model: MaiaEngineModel=MaiaEngineModel.MAIA3_5M,
-                  fen=chess.STARTING_FEN):
+                  fen=chess.STARTING_FEN,
+                  path_to_engine: str = None):
     
     try:
         game, board = setup_game("Simulated Game", f"Maia {white_elo}", f"Maia {black_elo}", fen)
@@ -89,8 +100,8 @@ async def simulate_game(white_elo,
         else:
             temperature_black, topp_black = playing_style_black.value
 
-        white_maia_engine_transport, white_maia_engine = await setup_maia_engine(engine_model, white_elo, temperature_white, topp_white)
-        black_maia_engine_transport, black_maia_engine = await setup_maia_engine(engine_model, black_elo, temperature_black, topp_black)
+        white_maia_engine_transport, white_maia_engine = await setup_maia_engine(engine_model, white_elo, temperature_white, topp_white, path_to_engine)
+        black_maia_engine_transport, black_maia_engine = await setup_maia_engine(engine_model, black_elo, temperature_black, topp_black, path_to_engine)
 
         if white_maia_engine is None or white_maia_engine_transport is None:
             raise RuntimeError("Maia white engine was not initialized successfully.")

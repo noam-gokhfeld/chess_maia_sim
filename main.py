@@ -46,7 +46,8 @@ async def main():
                                                     custom_temperature_black=custom_temperature_black,
                                                     custom_topp_black=custom_topp_black,
                                                     engine_model=game.MaiaEngineModel.MAIA3_5M,
-                                                    fen=chess.STARTING_FEN)
+                                                    fen="r1bqkbnr/1pp2ppp/p1p5/4p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 5",
+                                                    path_to_engine=r"D:\app_projects\chess_maia_sim\.venv\Scripts\maia3-5m.exe")
             print("Game simulation complete!")
             print("Game PGN:")
             print(game_product)
