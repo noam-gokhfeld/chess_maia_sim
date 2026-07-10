@@ -15,7 +15,6 @@ class MaiaEngineModel(Enum):
     MAIA3_79M = "maia3-79m"
 
 class PlayingStyles(Enum):
-    CUSTOM = (float(input("Enter the temperature for the custom playing style (0.0 to 1.0): ")), float(input("Enter the top-p for the custom playing style (0.0 to 1.0): ")))
     SOLID = (0.3, 0.80) # rigorous consistency and zero risk, temp=0.3, topp=0.80
     NATURALL = (0.75, 0.95) # natural play, temp=0.75, topp=0.95
     AGRESSIVE = (1.10, 0.98) #creative and chaos friendly, temp=1.10, topp=0.98
@@ -67,16 +66,29 @@ def setup_game(event, white, black, fen=chess.STARTING_FEN):
 
 async def simulate_game(white_elo, 
                   black_elo, 
-                  playing_style_white : PlayingStyles=PlayingStyles.STRATEGIC,
-                  playing_style_black : PlayingStyles=PlayingStyles.STRATEGIC,
+                  playing_style_white : PlayingStyles,
+                  playing_style_black : PlayingStyles,
+                  custom_temperature_white: float = None,
+                  custom_topp_white: float = None,
+                  custom_temperature_black: float = None,
+                  custom_topp_black: float = None,
                   engine_model: MaiaEngineModel=MaiaEngineModel.MAIA3_5M,
                   fen=chess.STARTING_FEN):
     
     try:
         game, board = setup_game("Simulated Game", f"Maia {white_elo}", f"Maia {black_elo}", fen)
         node = game
-        temperature_white, topp_white = playing_style_white.value
-        temperature_black, topp_black = playing_style_black.value
+        if custom_temperature_white is not None and custom_topp_white is not None:
+            temperature_white = custom_temperature_white
+            topp_white = custom_topp_white
+        else:
+            temperature_white, topp_white = playing_style_white.value
+        if custom_temperature_black is not None and custom_topp_black is not None:
+            temperature_black = custom_temperature_black
+            topp_black = custom_topp_black
+        else:
+            temperature_black, topp_black = playing_style_black.value
+            
         white_maia_engine_transport, white_maia_engine = await setup_maia_engine(engine_model, white_elo, temperature_white, topp_white)
         black_maia_engine_transport, black_maia_engine = await setup_maia_engine(engine_model, black_elo, temperature_black, topp_black)
 
