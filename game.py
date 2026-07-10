@@ -15,12 +15,12 @@ class MaiaEngineModel(Enum):
     MAIA3_79M = "maia3-79m"
 
 class PlayingStyles(Enum):
+    NOT_USING_PLAYING_STYLE = (0.0, 1.0) # not using playingstyles enum
     SOLID = (0.3, 0.80) # rigorous consistency and zero risk, temp=0.3, topp=0.80
-    NATURALL = (0.75, 0.95) # natural play, temp=0.75, topp=0.95
-    AGRESSIVE = (1.10, 0.98) #creative and chaos friendly, temp=1.10, topp=0.98
+    NATURAL = (0.75, 0.95) # natural play, temp=0.75, topp=0.95
+    GAMBITTER = (1.10, 0.98) #creative and chaos friendly, temp=1.10, topp=0.98
     BLUNDERING = (0.60, 1.00) # embraces mistakes for learning, temp=0.60, topp=1.00
     BULLET = (0.90, 0.90) # fast-paced, temp=0.90, topp=0.90
-    ARGMAX = (0.0, 1.0) # deterministic play, always choosing the best move, temp=0.0, topp=1.0
 
     def __init__(self, temperature : float, topp: float):
         self.temperature = temperature
@@ -88,7 +88,7 @@ async def simulate_game(white_elo,
             topp_black = custom_topp_black
         else:
             temperature_black, topp_black = playing_style_black.value
-            
+
         white_maia_engine_transport, white_maia_engine = await setup_maia_engine(engine_model, white_elo, temperature_white, topp_white)
         black_maia_engine_transport, black_maia_engine = await setup_maia_engine(engine_model, black_elo, temperature_black, topp_black)
 
