@@ -16,10 +16,11 @@ class MaiaEngineModel(Enum):
 
 class PlayingStyles(Enum):
     CUSTOM = "custom" # user-defined parameters
-    DISCIPLINED_GM = "disciplined_gm" # rigorous consistency and zero risk, temp=0.3, topp=1.0
-    MECHANICAL = "mechanical" # maximum determinism, minimal randomness, temp=0.3, topp=0.6
-    CREATIVE = "creative" # exploratory play with higher randomness, temp=0.8, topp=1.0
-    STRATEGIC = "strategic" # balanced approach with moderate randomness, temp=0.8, topp=0.75
+    SOLID = "solid" # rigorous consistency and zero risk, temp=0.3, topp=0.80
+    NATURALL = "natural" # natural play, temp=0.75, topp=0.95
+    AGRESSIVE = "aggressive" #creative and chaos friendly, temp=1.10, topp=0.98
+    BLUNDERING = "blundering" # embraces mistakes for learning, temp=0.60, topp=1.00
+    BULLET = "bullet" # fast-paced, temp=0.90, topp=0.90
     ARGMAX = "argmax" # deterministic play, always choosing the best move, temp=0.0, topp=1.0
 
 
@@ -58,18 +59,21 @@ def setup_game(event, white, black, fen=chess.STARTING_FEN):
     return game, board
 
 def configure_playing_style(playing_style: PlayingStyles):
-    if playing_style == PlayingStyles.DISCIPLINED_GM:
+    if playing_style == PlayingStyles.SOLID:
         temperature = 0.3
-        topp = 1.0
-    elif playing_style == PlayingStyles.MECHANICAL:
-        temperature = 0.3
-        topp = 0.6
-    elif playing_style == PlayingStyles.CREATIVE:
-        temperature = 0.8
-        topp = 1.0
-    elif playing_style == PlayingStyles.STRATEGIC:
-        temperature = 0.8
-        topp = 0.75
+        topp = 0.80
+    elif playing_style == PlayingStyles.NATURAL:
+        temperature = 0.75
+        topp = 0.95
+    elif playing_style == PlayingStyles.AGRESSIVE:
+        temperature = 1.10
+        topp = 0.98
+    elif playing_style == PlayingStyles.BLUNDERING:
+        temperature = 0.60
+        topp = 1.00
+    elif playing_style == PlayingStyles.BULLET:
+        temperature = 0.90
+        topp = 0.90
     elif playing_style == PlayingStyles.ARGMAX:
         temperature = 0.0
         topp = 1.0
