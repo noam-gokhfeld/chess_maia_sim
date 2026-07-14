@@ -62,8 +62,8 @@ class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Maia Chess Game Simulator")
-        self.geometry("1180x780")
-        self.minsize(1040, 700)
+        self.geometry("1220x900")
+        self.minsize(1080, 760)
 
         # Playback state, populated after a simulation completes.
         self.positions = [chess.Board()]
@@ -145,10 +145,12 @@ class App(ctk.CTk):
         right = ctk.CTkFrame(self, fg_color="transparent")
         right.grid(row=0, column=1, padx=(0, 10), pady=10, sticky="nsew")
         right.grid_columnconfigure(0, weight=1)
-        right.grid_rowconfigure(1, weight=1)
+        # Settings take the available vertical space; the PGN box keeps a fixed
+        # height at the bottom. (Row 0 expands, row 1 does not.)
+        right.grid_rowconfigure(0, weight=1)
 
         settings = ctk.CTkScrollableFrame(right, label_text="Simulation settings")
-        settings.grid(row=0, column=0, sticky="ew")
+        settings.grid(row=0, column=0, sticky="nsew")
         settings.grid_columnconfigure(1, weight=1)
 
         row = 0
@@ -212,9 +214,9 @@ class App(ctk.CTk):
         self.progress.set(0)
         row += 1
 
-        # PGN output.
-        self.pgn_box = ctk.CTkTextbox(right, font=("Consolas", 13), wrap="word")
-        self.pgn_box.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
+        # PGN output (fixed height, pinned below the settings).
+        self.pgn_box = ctk.CTkTextbox(right, height=200, font=("Consolas", 13), wrap="word")
+        self.pgn_box.grid(row=1, column=0, sticky="ew", pady=(10, 0))
 
     def _build_player_section(self, parent, side, title, row):
         widgets = {}
