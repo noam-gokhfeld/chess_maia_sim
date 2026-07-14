@@ -1,9 +1,7 @@
-import chess
-import chess.engine
-import sys
 import traceback
 import game
 import asyncio
+import customtkinter as ctk
 
 async def main():
     try:
