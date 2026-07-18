@@ -15,7 +15,6 @@ if sys.platform == "win32" and "TCL_LIBRARY" not in os.environ:
     if os.path.isdir(_tk_lib):
         os.environ["TK_LIBRARY"] = _tk_lib
 
-import asyncio
 import threading
 import tkinter as tk
 from tkinter import filedialog
@@ -376,7 +375,7 @@ class App(ctk.CTk):
 
     def _run_sim(self, params):
         try:
-            result = asyncio.run(game.simulate_game(**params))
+            result = game.simulate_game(**params)
         except Exception as exc:  # surface any failure in the UI
             self.after(0, self._on_sim_done, None, str(exc))
             return
