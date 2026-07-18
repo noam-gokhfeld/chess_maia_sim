@@ -16,11 +16,11 @@ class MaiaEngineModel(Enum):
 
 class PlayingStyles(Enum):
     NOT_USING_PLAYING_STYLE = (0.0, 1.0) # not using playingstyles enum
-    SOLID = (0.3, 0.80) # rigorous consistency and zero risk, temp=0.3, topp=0.80
+    SOLID = (0.3, 1.00) # rigorous consistency and zero risk, temp=0.3, topp=1.00
     NATURAL = (0.75, 0.95) # natural play, temp=0.75, topp=0.95
     GAMBITTER = (1.10, 0.98) #creative and chaos friendly, temp=1.10, topp=0.98
-    BLUNDERING = (0.60, 1.00) # embraces mistakes for learning, temp=0.60, topp=1.00
-    BULLET = (0.90, 0.90) # fast-paced, temp=0.90, topp=0.90
+    BLUNDERING = (1.20, 1.00) # embraces mistakes for learning, temp=1.20, topp=1.00
+    BULLET = (0.95, 0.85) # fast-paced, temp=0.95, topp=0.85
 
     def __init__(self, temperature : float, topp: float):
         self.temperature = temperature
