@@ -30,7 +30,7 @@ class PlayingStyles(Enum):
 
 
 
-def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature: float = 0.0, topp: float = 1.0, path_to_engine: str = None):
+def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature: float = 0.0, topp: float = 1.0, path_to_engine: str = None, timeout=20.0):
     try:
         seed = str(random.randint(1, 999999))
         if path_to_engine is None:
@@ -40,7 +40,8 @@ def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature: floa
                 "--elo", str(elo),
                 "--temperature", str(temperature),
                 "--top-p", str(topp),
-                "--seed", seed]
+                "--seed", seed],
+                timeout=timeout
             )
         else:
             engine = chess.engine.SimpleEngine.popen_uci(
@@ -49,7 +50,8 @@ def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature: floa
                 "--elo", str(elo),
                 "--temperature", str(temperature),
                 "--top-p", str(topp),
-                "--seed", seed]
+                "--seed", seed],
+                timeout=timeout
             )
         return engine
     except Exception as e:
