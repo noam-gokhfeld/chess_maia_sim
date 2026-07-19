@@ -37,6 +37,7 @@ def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature: floa
             engine = chess.engine.SimpleEngine.popen_uci(
                 [sys.executable, "-m", "maia3.uci",
                 "--model", engine_model.value,
+                "--use-uci-history",
                 "--elo", str(elo),
                 "--temperature", str(temperature),
                 "--top-p", str(topp),
@@ -47,6 +48,7 @@ def setup_maia_engine(engine_model: MaiaEngineModel, elo=1500, temperature: floa
             engine = chess.engine.SimpleEngine.popen_uci(
                 [path_to_engine,
                 "--model", engine_model.value,
+                "--use-uci-history",
                 "--elo", str(elo),
                 "--temperature", str(temperature),
                 "--top-p", str(topp),
