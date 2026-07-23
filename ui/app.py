@@ -1,5 +1,18 @@
 """The main application window: wires the board, player settings, and playback
-together and drives simulations off the UI thread."""
+together and drives simulations off the UI thread.
+
+Layout at a glance
+------------------
+The window is a two-column grid:
+
+* Left pane  -- the chess board plus the move caption and navigation buttons.
+* Right pane -- a scrollable "Simulation settings" panel on top and a
+  fixed-height PGN output box pinned below it.
+
+Because tkinter is single-threaded, the (potentially slow) engine simulation is
+run on a background thread and its result is marshalled back onto the UI thread
+with ``self.after`` -- see the "Simulation" section below.
+"""
 
 import threading
 import tkinter as tk
@@ -16,7 +29,12 @@ from ui.playback import GamePlayback
 
 
 class App(ctk.CTk):
+    """Top-level customtkinter window tying together the board, the per-side
+    settings, and playback of a simulated game."""
+
     def __init__(self):
+        """Build the window, lay out both panes, wire key bindings, and draw the
+        initial (empty) board."""
         super().__init__()
         self.title("Maia Chess Game Simulator")
         self.geometry("1220x900")
@@ -25,12 +43,17 @@ class App(ctk.CTk):
         # Playback state, replaced wholesale when a simulation completes.
         self.playback = GamePlayback()
 
-        # Per-side settings components, built by _build_right_pane.
+        # Per-side settings components. They are created here without a parent
+        # widget; _build_right_pane assigns their ``parent`` and grids them into
+        # the shared settings frame.
         self.players = {
             "white": PlayerSettings(None, "White player"),
             "black": PlayerSettings(None, "Black player"),
         }
 
+        # Two-column layout: the left (board) column keeps its natural width
+        # (weight 0) while the right (settings) column absorbs any extra space
+        # (weight 1). The single row expands vertically.
         self.grid_columnconfigure(0, weight=0)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
@@ -46,6 +69,8 @@ class App(ctk.CTk):
 
     # -- Left pane: board + navigation --------------------------------------
     def _build_left_pane(self):
+        """Build the board view, the move caption, and the navigation buttons in
+        the left column."""
         left = ctk.CTkFrame(self)
         left.grid(row=0, column=0, padx=10, pady=10, sticky="n")
 
@@ -55,6 +80,8 @@ class App(ctk.CTk):
         self.move_label = ctk.CTkLabel(left, text="Start position", font=("Segoe UI", 15))
         self.move_label.pack(pady=(4, 6))
 
+        # Jump-to-start / step-back / step-forward / jump-to-end buttons, grouped
+        # on one row inside a transparent frame.
         nav = ctk.CTkFrame(left, fg_color="transparent")
         nav.pack(pady=(0, 8))
         for text, cmd in (
@@ -74,6 +101,15 @@ class App(ctk.CTk):
 
     # -- Right pane: settings (top) + PGN (bottom) --------------------------
     def _build_right_pane(self):
+        """Assemble the right column: a scrollable settings panel on top and the
+        PGN output box pinned below.
+
+        This method is only an orchestrator. Each logical group of widgets is
+        built by a dedicated ``_build_*`` helper that grids itself starting at a
+        given row and returns the next free row -- the same ``(row) -> next_row``
+        contract used by ``PlayerSettings.build`` -- so the shared 2-column grid
+        stays aligned across all sections.
+        """
         right = ctk.CTkFrame(self, fg_color="transparent")
         right.grid(row=0, column=1, padx=(0, 10), pady=10, sticky="nsew")
         right.grid_columnconfigure(0, weight=1)
@@ -81,16 +117,39 @@ class App(ctk.CTk):
         # height at the bottom. (Row 0 expands, row 1 does not.)
         right.grid_rowconfigure(0, weight=1)
 
+        # Scrollable container for every setting. Column 1 (the inputs) expands so
+        # entries/menus stretch to fill the width; column 0 (labels) stays at its
+        # natural width.
         settings = ctk.CTkScrollableFrame(right, label_text="Simulation settings")
         settings.grid(row=0, column=0, sticky="nsew")
         settings.grid_columnconfigure(1, weight=1)
 
+        # Thread a running row counter through each builder so all sections share
+        # one continuous, aligned grid.
         row = 0
+        row = self._build_player_rows(settings, row)
+        row = self._build_model_row(settings, row)
+        row = self._build_engine_path_rows(settings, row)
+        row = self._build_fen_row(settings, row)
+        row = self._build_run_controls(settings, row)
+
+        # The PGN box lives on ``right`` (the outer frame's fixed row 1), not in
+        # the scrollable settings area above.
+        self._build_pgn_box(right)
+
+    def _build_player_rows(self, settings, row) -> int:
+        """Grid both players' settings sections into the shared frame.
+
+        Each ``PlayerSettings`` grids itself and returns the next free row, which
+        we pass along so the two sections stack without overlapping.
+        """
         for player in self.players.values():
             player.parent = settings
             row = player.build(row)
+        return row
 
-        # Engine model type (5M / 23M / 79M).
+    def _build_model_row(self, settings, row) -> int:
+        """Add the engine model dropdown (5M / 23M / 79M)."""
         ctk.CTkLabel(settings, text="Engine model").grid(
             row=row, column=0, sticky="w", padx=8, pady=6
         )
@@ -99,12 +158,16 @@ class App(ctk.CTk):
         )
         self.model_menu.set(config.LABEL_BY_MODEL[game.MaiaEngineModel.MAIA3_5M])
         self.model_menu.grid(row=row, column=1, sticky="ew", padx=8, pady=6)
-        row += 1
+        return row + 1
 
-        # Engine executable path + Browse.
+    def _build_engine_path_rows(self, settings, row) -> int:
+        """Add the engine-executable path field (with a Browse button) and the
+        hint explaining that an empty path launches the engine via Python."""
         ctk.CTkLabel(settings, text="Engine path").grid(
             row=row, column=0, sticky="w", padx=8, pady=6
         )
+        # A nested frame lets the entry and the Browse button share one grid cell;
+        # the entry (column 0) expands, the button keeps its fixed width.
         path_frame = ctk.CTkFrame(settings, fg_color="transparent")
         path_frame.grid(row=row, column=1, sticky="ew", padx=8, pady=6)
         path_frame.grid_columnconfigure(0, weight=1)
@@ -122,18 +185,23 @@ class App(ctk.CTk):
             font=("Segoe UI", 11),
             text_color="gray",
         ).grid(row=row, column=0, columnspan=2, sticky="w", padx=8)
-        row += 1
+        return row + 1
 
-        # Starting FEN.
+    def _build_fen_row(self, settings, row) -> int:
+        """Add the starting-FEN entry (defaults to the standard start position)."""
         ctk.CTkLabel(settings, text="Starting FEN").grid(
             row=row, column=0, sticky="w", padx=8, pady=6
         )
         self.fen_entry = ctk.CTkEntry(settings)
         self.fen_entry.insert(0, chess.STARTING_FEN)
         self.fen_entry.grid(row=row, column=1, sticky="ew", padx=8, pady=6)
-        row += 1
+        return row + 1
 
-        # Simulate button + status + progress bar.
+    def _build_run_controls(self, settings, row) -> int:
+        """Add the Simulate button, the status label, and the progress bar.
+
+        All three span both columns so they stretch across the panel width.
+        """
         self.simulate_btn = ctk.CTkButton(settings, text="Simulate", command=self._on_simulate)
         self.simulate_btn.grid(row=row, column=0, columnspan=2, sticky="ew", padx=8, pady=(12, 6))
         row += 1
@@ -142,12 +210,19 @@ class App(ctk.CTk):
         self.status_label.grid(row=row, column=0, columnspan=2, sticky="ew", padx=8)
         row += 1
 
+        # Indeterminate bar: it only animates (start/stop) while a simulation is
+        # in flight -- there is no measurable percentage to show.
         self.progress = ctk.CTkProgressBar(settings, mode="indeterminate")
         self.progress.grid(row=row, column=0, columnspan=2, sticky="ew", padx=8, pady=(4, 8))
         self.progress.set(0)
-        row += 1
+        return row + 1
 
-        # PGN output (fixed height, pinned below the settings).
+    def _build_pgn_box(self, right):
+        """Add the fixed-height PGN output box below the settings panel.
+
+        It is parented to ``right`` (the outer frame's fixed row 1), so it stays
+        put below the scrollable settings rather than scrolling with them.
+        """
         self.pgn_box = ctk.CTkTextbox(right, height=200, font=("Consolas", 13), wrap="word")
         self.pgn_box.grid(row=1, column=0, sticky="ew", pady=(10, 0))
 
@@ -160,6 +235,7 @@ class App(ctk.CTk):
             self.path_entry.insert(0, config.default_engine_path(model))
 
     def _browse_engine(self):
+        """Open a file picker and copy the chosen executable into the path field."""
         path = filedialog.askopenfilename(
             title="Select Maia engine executable",
             filetypes=[("Executable", "*.exe"), ("All files", "*.*")],
@@ -170,6 +246,13 @@ class App(ctk.CTk):
 
     # -- Simulation ---------------------------------------------------------
     def _on_simulate(self):
+        """Validate the inputs, then kick off the engine simulation.
+
+        Runs on the UI thread: it reads and checks the widget values, disables the
+        button, shows progress, and hands the actual (slow) work to a background
+        thread so the window stays responsive.
+        """
+        # ELO ratings must be whole numbers; reject non-numeric input early.
         try:
             white_elo = int(self.players["white"].elo.get())
             black_elo = int(self.players["black"].elo.get())
@@ -177,6 +260,8 @@ class App(ctk.CTk):
             self._set_status("ELO ratings must be whole numbers.", error=True)
             return
 
+        # An empty FEN falls back to the standard start position; anything else
+        # must parse as a legal board before we run the engine.
         fen = self.fen_entry.get().strip() or chess.STARTING_FEN
         try:
             chess.Board(fen)
@@ -202,12 +287,20 @@ class App(ctk.CTk):
             path_to_engine=self.path_entry.get().strip() or None,
         )
 
+        # Lock the button and start the animation, then run the simulation off the
+        # UI thread (daemon so it dies with the app).
         self.simulate_btn.configure(state="disabled")
         self._set_status("Simulating…")
         self.progress.start()
         threading.Thread(target=self._run_sim, args=(params,), daemon=True).start()
 
     def _run_sim(self, params):
+        """Run the simulation on a background thread.
+
+        tkinter is not thread-safe, so this never touches widgets directly: it
+        marshals the outcome (success or failure) back onto the UI thread with
+        ``self.after(0, ...)``, which queues ``_on_sim_done`` to run there.
+        """
         try:
             result = game.simulate_game(**params)
         except Exception as exc:  # surface any failure in the UI
@@ -216,6 +309,8 @@ class App(ctk.CTk):
         self.after(0, self._on_sim_done, result, None)
 
     def _on_sim_done(self, result, error):
+        """Handle a finished simulation back on the UI thread: stop the progress
+        bar, re-enable the button, and either show an error or load the game."""
         self.progress.stop()
         self.progress.set(0)
         self.simulate_btn.configure(state="normal")
@@ -227,6 +322,8 @@ class App(ctk.CTk):
             self._set_status("Simulation failed — see console for details.", error=True)
             return
 
+        # Show the game's PGN and load it into playback so the board can step
+        # through the moves.
         self.pgn_box.delete("1.0", "end")
         self.pgn_box.insert("1.0", str(result))
         self.playback = GamePlayback.from_game(result)
@@ -238,16 +335,22 @@ class App(ctk.CTk):
 
     # -- Playback -----------------------------------------------------------
     def _maybe_nav(self, event, delta):
-        # Ignore arrow keys while an entry has focus (let the text cursor move).
+        """Arrow-key handler: step through the game unless an entry is focused.
+
+        While the user is typing in a text field we let the arrow keys move the
+        text cursor instead of navigating the game.
+        """
         if isinstance(self.focus_get(), tk.Entry):
             return
         self._step(delta)
 
     def _step(self, delta):
+        """Move ``delta`` plies forward/backward and redraw if the move succeeded."""
         if self.playback.step(delta):
             self._refresh()
 
     def _go_to(self, index):
+        """Jump to a specific position index and redraw if it changed."""
         if self.playback.go_to(index):
             self._refresh()
 
@@ -257,11 +360,13 @@ class App(ctk.CTk):
         self.move_label.configure(text=self.playback.move_label_text())
 
     def _set_status(self, text, error=False):
+        """Update the status line; red for errors, theme-default otherwise."""
         color = "#B22222" if error else ("gray10", "gray90")
         self.status_label.configure(text=text, text_color=color)
 
 
 def run():
+    """Configure the customtkinter theme and start the application event loop."""
     ctk.set_appearance_mode("System")
     ctk.set_default_color_theme("blue")
     App().mainloop()
